@@ -1,3 +1,10 @@
+---
+title: Organizador de Tarefas
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Organizador de Tarefas com Priorizacao Inteligente
 
 Aplicacao prototipo para a avaliacao intermediaria de IA Generativa.
