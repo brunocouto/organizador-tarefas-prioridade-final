@@ -1,3 +1,13 @@
+---
+title: Organizador Tarefas Prioridade Final
+emoji: ✅
+colorFrom: red
+colorTo: pink
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Organizador de Tarefas com IA Generativa
 
 Aplicacao final da disciplina de IA Generativa. O sistema permite cadastrar tarefas e usa um LLM para sugerir prioridade, explicar a decisao, quebrar tarefas grandes em subtarefas e montar um plano diario de execucao.
@@ -106,6 +116,26 @@ Depois execute:
 ```bash
 npm start
 ```
+
+## Deploy no Hugging Face Spaces
+
+O projeto esta preparado para Hugging Face Spaces com Docker.
+
+Configure esta secret no Space:
+
+```env
+OPENROUTER_API_KEY=sua_chave_aqui
+```
+
+Variaveis opcionais:
+
+```env
+OPENROUTER_MODEL=openai/gpt-5.2
+OPENROUTER_TEMPERATURE=0.3
+OPENROUTER_TOP_P=0.9
+```
+
+O arquivo `.env.local` e ignorado e nao deve ser enviado ao repositorio.
 
 ## O que funcionou
 
