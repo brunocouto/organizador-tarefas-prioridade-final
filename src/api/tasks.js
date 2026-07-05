@@ -10,7 +10,16 @@ async function request(path, options = {}) {
   })
 
   if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`)
+    let message = `Request failed with status ${response.status}`
+
+    try {
+      const payload = await response.json()
+      message = payload.detail ?? message
+    } catch {
+      // Keep the generic message when the backend does not return JSON.
+    }
+
+    throw new Error(message)
   }
 
   return response.json()
@@ -23,6 +32,26 @@ export function listTasks() {
 export function createTask(payload) {
   return request('/api/tasks', {
     body: JSON.stringify(payload),
+    method: 'POST',
+  })
+}
+
+export function updateTask(id, payload) {
+  return request(`/api/tasks/${id}`, {
+    body: JSON.stringify(payload),
+    method: 'PUT',
+  })
+}
+
+export function suggestTaskWithAi(payload) {
+  return request('/api/ai/suggest-priority', {
+    body: JSON.stringify(payload),
+    method: 'POST',
+  })
+}
+
+export function planTasksWithAi() {
+  return request('/api/ai/daily-plan', {
     method: 'POST',
   })
 }

@@ -1,81 +1,129 @@
----
-title: Organizador de Tarefas
-sdk: docker
-app_port: 7860
-pinned: false
----
+# Organizador de Tarefas com IA Generativa
 
-# Organizador de Tarefas com Priorizacao Inteligente
+Aplicacao final da disciplina de IA Generativa. O sistema permite cadastrar tarefas e usa um LLM para sugerir prioridade, explicar a decisao, quebrar tarefas grandes em subtarefas e montar um plano diario de execucao.
 
-Aplicacao prototipo para a avaliacao intermediaria de IA Generativa.
+## Problema e solucao
 
-## Escopo
+O problema escolhido foi a organizacao de tarefas quando existem prazos, niveis de importancia e dificuldade diferentes. A solucao combina uma regra objetiva de prioridade com IA generativa.
 
-O sistema permite cadastrar tarefas com nome, prazo, dificuldade e importancia. A aplicacao lista as tarefas e mostra um painel com a ordem de prioridade sugerida.
+A regra calcula uma base numerica. O LLM usa essa base para gerar uma explicacao mais natural, subtarefas e uma ordem de execucao mais facil de entender.
 
-Nao ha integracao com LLM nesta versao. A priorizacao e simulada por regra no backend para representar o ponto em que um LLM poderia ser integrado futuramente.
+## Funcionalidades com IA
 
-## Problema e solucao proposta
+- Sugerir prioridade de uma tarefa antes do cadastro.
+- Explicar por que a tarefa recebeu aquela prioridade.
+- Quebrar uma tarefa em subtarefas praticas.
+- Organizar a lista cadastrada em um plano diario.
 
-O problema escolhido foi a organizacao de tarefas quando existem prazos, dificuldade e niveis diferentes de importancia. A solucao proposta e um painel simples que recebe as tarefas e calcula uma ordem sugerida para execucao.
+Cadastro, listagem e armazenamento continuam sem IA. A IA entra apenas onde existe julgamento, linguagem natural ou recomendacao.
 
-No futuro, um LLM poderia substituir a regra simulada para interpretar descricoes mais completas, sugerir subtarefas e explicar melhor a prioridade. Nesta entrega, isso nao foi implementado porque o enunciado pede prototipo sem modelo de IA real.
+## Arquitetura de LLM
 
-## Stack
+Fluxo da sugestao de prioridade:
 
-- Frontend: React + Vite
-- Backend: Python + FastAPI
-- Armazenamento: memoria da aplicacao
-- Deploy previsto: Hugging Face Spaces com Docker
+1. Usuario preenche nome, descricao, projeto, origem, prazo, dificuldade e importancia.
+2. Frontend chama `POST /api/ai/suggest-priority`.
+3. Backend executa a tool `calculate_rule_priority`.
+4. Backend envia tarefa, resultado da tool e system prompt para o modelo.
+5. Modelo retorna JSON com prioridade, score, explicacao e subtarefas.
+6. Frontend exibe o resultado.
 
-## Escolhas de design
+Fluxo do plano diario:
 
-A aplicacao foi separada em frontend e backend porque essa foi a arquitetura recomendada no enunciado. O frontend concentra a interface de cadastro, lista e painel. O backend concentra a regra simulada de priorizacao e o armazenamento em memoria.
+1. Usuario clica em "Organizar com IA".
+2. Backend busca as tarefas cadastradas em memoria.
+3. Backend executa a tool `build_daily_order`.
+4. Modelo recebe a lista ordenada e gera um plano curto.
+5. Frontend exibe o resumo e a ordem sugerida.
 
-O armazenamento em memoria foi escolhido para manter o prototipo simples. Os dados somem quando o servidor reinicia, mas isso atende ao objetivo desta etapa: demonstrar interface e estrutura sem criar uma solucao de producao.
+## Modelo e parametros
 
-A regra de priorizacao considera prazo, importancia e dificuldade. Ela fica isolada em `backend/app/priority.py` para facilitar uma futura troca por chamada de LLM.
+Provedor escolhido: OpenRouter.
 
-## Como rodar localmente
+Modelo configurado por padrao: `openai/gpt-5.2`, definido em `.env.local` por `OPENROUTER_MODEL`.
 
-No VS Code, abra um terminal na pasta do projeto e execute:
+Parametros:
+
+- `OPENROUTER_TEMPERATURE=0.3`: baixa criatividade para manter respostas consistentes.
+- `OPENROUTER_TOP_P=0.9`: permite alguma variacao sem deixar a resposta solta.
+- `max_completion_tokens`: limitado por chamada para evitar respostas longas.
+- `response_format=json_object`: forca retorno estruturado em JSON.
+
+Justificativa: a tarefa precisa de explicacoes curtas, previsiveis e estruturadas. Temperatura baixa reduz variacao. JSON facilita validar a resposta no backend antes de mostrar ao usuario.
+
+## Framework e integracao
+
+A integracao usa chamada direta via SDK oficial da OpenAI apontando para o endpoint compativel da OpenRouter no backend FastAPI.
+
+Nao foi usado LangChain ou LangGraph porque o fluxo e pequeno: duas chamadas de IA, duas tools simples e nenhum RAG. Um framework maior adicionaria complexidade sem ganho claro para este caso.
+
+A chave de API fica somente no backend, em `.env.local`. O frontend nunca acessa a chave.
+
+## System prompt
+
+O system prompt esta em `prompts/system_prompt.txt`.
+
+Ele define:
+
+- persona: assistente de priorizacao de tarefas;
+- idioma: portugues do Brasil;
+- restricoes: nao inventar tarefas ou datas;
+- formato de saida: JSON valido;
+- estrategia: uso de tags XML e exemplos few-shot.
+
+## Tools
+
+As tools estao em `tools/task_tools.py`.
+
+`calculate_rule_priority`
+
+- Entrada: nome, descricao, prazo, dificuldade, importancia, projeto e origem.
+- Saida: prioridade base, score e justificativa por regra.
+- Motivo: dar ao LLM uma ancora objetiva antes da explicacao textual.
+
+`build_daily_order`
+
+- Entrada: lista de tarefas cadastradas.
+- Saida: tarefas ordenadas por score e prazo.
+- Motivo: impedir que o LLM reorganize a lista de forma arbitraria.
+
+## Como rodar
+
+Instale as dependencias Python no ambiente virtual:
+
+```bash
+.venv\Scripts\python -m pip install -r backend\requirements.txt
+```
+
+Coloque sua chave local em `.env.local`:
+
+```env
+OPENROUTER_API_KEY=sua_chave_aqui
+```
+
+Depois execute:
 
 ```bash
 npm start
 ```
 
-A aplicacao abre em `http://localhost:8000`.
-
-Se a porta `8000` estiver ocupada, o comando usa a proxima porta livre e mostra o link no terminal.
-
-## Funcionalidades
-
-- Cadastro de tarefa
-- Lista de tarefas cadastradas
-- Painel de prioridades
-- Priorizacao simulada
-- Dados em memoria durante a execucao
-
-## Uso do agente de codificacao
-
-O projeto foi criado com apoio do OpenAI Codex. Os pedidos principais foram:
-
-- criar o projeto dentro da pasta da avaliacao;
-- usar React + Vite no frontend;
-- usar Python + FastAPI no backend;
-- manter o banco em memoria;
-- nao integrar LLM nesta etapa;
-- manter poucas funcionalidades, com organizacao limpa.
-
 ## O que funcionou
 
-- A geracao da estrutura React + FastAPI funcionou bem.
-- A separacao da regra simulada em um modulo proprio deixou a futura integracao com LLM mais simples.
-- O build do React foi gerado com sucesso.
-- A API foi testada com listagem e cadastro de tarefa.
-- O backend conseguiu servir o build de producao do frontend.
+- Separar a regra objetiva das respostas do LLM deixou a explicacao mais confiavel.
+- JSON validado pelo backend evita quebrar a interface quando o modelo responde errado.
+- Manter a chave no backend evita vazamento no frontend.
+- Usar tools simples deixou a justificativa tecnica facil de explicar.
 
-## O que nao funcionou
+## O que nao funcionou / limitacoes
 
-- O primeiro comando para criar o Vite falhou por erro de certificado local do npm. Foi necessario executar novamente usando a CA do sistema.
-- O armazenamento em memoria nao persiste dados apos reiniciar o servidor. Isso foi mantido de proposito para o prototipo.
+- Sem `OPENROUTER_API_KEY`, as funcoes de IA retornam erro de configuracao.
+- O armazenamento ainda e em memoria; as tarefas somem ao reiniciar.
+- O modelo pode sugerir subtarefas genericas quando o nome da tarefa e muito vago.
+- Nao foi usado RAG porque o sistema nao consulta documentos externos.
+
+## Stack
+
+- Frontend: React + Vite
+- Backend: Python + FastAPI
+- IA: OpenRouter via SDK oficial da OpenAI
+- Armazenamento: memoria da aplicacao

@@ -1,7 +1,13 @@
 const optionLabels = {
   alta: 'Alta',
+  atualizacao_site: 'Atualizacao do site',
   baixa: 'Baixa',
+  equipe: 'Equipe',
+  entrada: 'Entrada',
+  marca_nova: 'Marca nova',
   media: 'Media',
+  pessoal: 'Pessoal',
+  trabalho: 'Trabalho',
 }
 
 export function translateOption(value) {

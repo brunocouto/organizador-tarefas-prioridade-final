@@ -1,11 +1,18 @@
 from pathlib import Path
+from uuid import UUID
 
-from fastapi import FastAPI, status
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .models import TaskCreate, TaskResponse
+from .llm import (
+    LlmConfigurationError,
+    LlmProviderError,
+    plan_day_with_ai,
+    suggest_priority_with_ai,
+)
+from .models import AiDailyPlanResponse, AiSuggestionRequest, AiSuggestionResponse, TaskCreate, TaskResponse
 from .store import task_store
 
 app = FastAPI(title="Organizador de Tarefas")
@@ -39,6 +46,36 @@ def list_tasks() -> list[TaskResponse]:
 )
 def create_task(task: TaskCreate) -> TaskResponse:
     return task_store.create_task(task)
+
+
+@app.put("/api/tasks/{task_id}", response_model=TaskResponse)
+def update_task(task_id: UUID, task: TaskCreate) -> TaskResponse:
+    updated_task = task_store.update_task(task_id, task)
+
+    if updated_task is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarefa nao encontrada.")
+
+    return updated_task
+
+
+@app.post("/api/ai/suggest-priority", response_model=AiSuggestionResponse)
+def suggest_priority(task: AiSuggestionRequest) -> AiSuggestionResponse:
+    try:
+        return suggest_priority_with_ai(task)
+    except LlmConfigurationError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    except LlmProviderError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+
+@app.post("/api/ai/daily-plan", response_model=AiDailyPlanResponse)
+def create_daily_plan() -> AiDailyPlanResponse:
+    try:
+        return plan_day_with_ai(task_store.list_tasks())
+    except LlmConfigurationError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    except LlmProviderError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
 
 dist_dir = Path(__file__).resolve().parents[2] / "dist"

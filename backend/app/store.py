@@ -1,7 +1,8 @@
 from datetime import date, datetime, timedelta
+from uuid import UUID
 from uuid import uuid4
 
-from .models import Level, StoredTask, TaskCreate, TaskResponse
+from .models import Level, Project, StoredTask, TaskCreate, TaskResponse, TaskSource
 from .priority import calculate_priority
 
 
@@ -23,6 +24,20 @@ class TaskStore:
 
         return self._to_response(stored_task)
 
+    def update_task(self, task_id: UUID, task: TaskCreate) -> TaskResponse | None:
+        for index, stored_task in enumerate(self._tasks):
+            if stored_task.id == task_id:
+                updated_task = StoredTask(
+                    created_at=stored_task.created_at,
+                    id=stored_task.id,
+                    **task.model_dump(),
+                )
+                self._tasks[index] = updated_task
+
+                return self._to_response(updated_task)
+
+        return None
+
     def _to_response(self, task: StoredTask) -> TaskResponse:
         priority = calculate_priority(task)
 
@@ -37,22 +52,40 @@ class TaskStore:
         today = date.today()
         examples = [
             TaskCreate(
+                description="Concluir os arquivos principais e revisar se a entrega esta pronta para avaliacao.",
                 difficulty=Level.HIGH,
-                due_date=today + timedelta(days=1),
+                due_date=today,
                 importance=Level.HIGH,
                 name="Finalizar entrega da avaliacao",
+                project=Project.WORK,
+                source=TaskSource.TEAM,
             ),
             TaskCreate(
+                description="Verificar se o README explica o objetivo, a arquitetura e como rodar o projeto.",
                 difficulty=Level.MEDIUM,
                 due_date=today + timedelta(days=5),
                 importance=Level.HIGH,
                 name="Revisar README do projeto",
+                project=Project.SITE_UPDATE,
+                source=TaskSource.TEAM,
             ),
             TaskCreate(
+                description="Definir uma proposta visual e uma mensagem curta para apresentar a marca.",
+                difficulty=Level.MEDIUM,
+                due_date=today + timedelta(days=2),
+                importance=Level.MEDIUM,
+                name="Melhorar ideia da marca",
+                project=Project.NEW_BRAND,
+                source=TaskSource.INBOX,
+            ),
+            TaskCreate(
+                description="Separar as atividades por prazo, importancia e dificuldade para planejar a semana.",
                 difficulty=Level.LOW,
                 due_date=today + timedelta(days=12),
                 importance=Level.MEDIUM,
                 name="Organizar tarefas da semana",
+                project=Project.PERSONAL,
+                source=TaskSource.INBOX,
             ),
         ]
 

@@ -1,2 +1,5 @@
 fastapi
+openai>=2.0.0
+python-dotenv
+truststore
 uvicorn[standard]
